@@ -1,6 +1,8 @@
 import httpx
 from top_academy_journal.endpoints import endpoints
 from top_academy_journal.enums import HomeworkStatus
+from top_academy_journal.schemas import Homework, Student
+from typing import List
 
 class Journal:
     def __init__(self, username: str, password: str):
@@ -25,10 +27,11 @@ class Journal:
 
         return await self._client.request(method, url, **kwargs)
 
-    async def get_user_info(self):
+    async def fetch_user(self) -> Student:
         response = await self._request("GET", endpoints["userinfo"])
-        return response.json()
+        return Student.model_validate(response.json())
 
-    async def get_homework(self, status: HomeworkStatus = HomeworkStatus.UNDONE):
+    async def fetch_homework(self, status: HomeworkStatus = HomeworkStatus.UNDONE) -> List[Homework]:
         response = await self._request("GET", f"{endpoints["homework"]}{status}")
-        return response.json()
+        response_json = response.json()
+        return [Homework.model_validate(hw) for hw in response_json]
