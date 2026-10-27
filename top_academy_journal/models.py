@@ -1,8 +1,8 @@
 from pydantic import BaseModel, Field, AnyHttpUrl
 from datetime import datetime
-from .enums import Gender
+from .enums import Gender, HomeworkStatus
 
-class Student(BaseModel):
+class UserInfo(BaseModel):
     id: int = Field(alias='student_id')
     name: str = Field(alias='full_name')
     gender: Gender
@@ -18,10 +18,10 @@ class Student(BaseModel):
 
 class HomeworkStudent(BaseModel):
     id: int
-    created_at: datetime
+    created_at: datetime = Field(alias='creation_time')
     file_path: AnyHttpUrl | None
     mark: int | None
-    comment: str | None
+    comment: str | None = Field(alias='stud_answer')
 
 class Homework(BaseModel):
     id: int
@@ -35,4 +35,5 @@ class Homework(BaseModel):
     file_path: AnyHttpUrl | None
     teacher_name: str = Field(alias='fio_teach')
     teacher_id: int = Field(alias='id_teach')
+    status: HomeworkStatus
     homework_student: HomeworkStudent | None = Field(alias='homework_stud')
