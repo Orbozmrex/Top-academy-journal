@@ -1,9 +1,13 @@
 from top_academy_journal.client import Journal
-from top_academy_journal.enums import HomeworkStatus
+from top_academy_journal.enums import HomeworkStatus, Gender
+from top_academy_journal.models import Homework, HomeworkStudent
 
-__version__ = '0.1.0'
+__version__ = '0.1.1'
 
 __all__ = [
     "Journal",
-    "HomeworkStatus"
+    "HomeworkStatus",
+    "Homework",
+    "HomeworkStudent",
+    "Gender"
 ]
