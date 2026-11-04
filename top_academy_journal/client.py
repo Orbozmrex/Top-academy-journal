@@ -1,22 +1,32 @@
 import httpx
 from top_academy_journal.endpoints import endpoints
-from top_academy_journal.enums import HomeworkStatus
-from top_academy_journal.models import Homework, UserInfo, HomeworkStudent
+from top_academy_journal.enums import HomeworkStatus, HomeworkType
+from top_academy_journal.models.homework import Homework, HomeworkStudent
+from top_academy_journal.models.schedule import ScheduleLesson
+from top_academy_journal.models.student import UserInfo
 from typing import List
 from pathlib import Path
+from datetime import datetime
+from urllib.parse import urlencode
 
 class Journal:
     def __init__(self, username: str, password: str):
         self._client = httpx.AsyncClient(base_url="https://msapi.top-academy.ru/api/v2", 
-                                         headers={"Referer": "https://journal.top-academy.ru/", 
-                                                  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"},
-                                         timeout=30)
+                                         headers={"Referer": "https://journal.top-academy.ru/"},
+                                         timeout=30,
+                                         transport=httpx.AsyncHTTPTransport(retries=3))
         self._username: str = username
         self._password: str = password
-        self._app_key: str = "6a56a5df2667e65aab73ce76d1dd737f7d1faef9c52e8b8c55ac75f565d8e8a6"
+        self._app_key: str = "6a56a5df2667e65aab73ce76d1dd737f7d1faef9c52e8b8c55ac75f565d8e8a6" #https://journal.top-academy.ru/app.70f28502cfe23f48f120.js
         self._is_authorized: bool = False
         self._user_info: UserInfo | None = None
         self._homework: dict[int, Homework] = {}
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        await self.aclose()
 
     async def _auth(self):
         response = await self._client.post(endpoints["login"], json={"username": self._username, "password": self._password, "application_key": self._app_key})
@@ -40,8 +50,20 @@ class Journal:
     def get_userinfo(self) -> UserInfo:
         return self._user_info
 
-    async def fetch_homework(self, status: HomeworkStatus = HomeworkStatus.UNDONE) -> List[Homework]:
-        response = await self._request("GET", f"{endpoints["homework"]}{status}")
+    async def fetch_homework(self, status: HomeworkStatus | None = None, homework_type: HomeworkType | None = None) -> List[Homework]:
+        params = {}
+        if status is not None:
+            params["status"] = status
+        if homework_type is not None:
+            params["type"] = homework_type
+
+        base_url = endpoints["homework"]
+        if params:
+            url = f"{base_url}?{urlencode(params)}"
+        else:
+            url = base_url
+
+        response = await self._request("GET", url)
         response_json = response.json()
         homework_list = [Homework.model_validate(hw) for hw in response_json]
 
@@ -75,3 +97,17 @@ class Journal:
             files = {"file": (file_name, file)}
             response = await self._request("POST", endpoints["homework_upload"], data=data, files=files)
             return HomeworkStudent.model_validate(response.json())
+
+    async def fetch_schedule(self, start_date: datetime, end_date: datetime | None = None):
+        start_date = start_date.strftime("%Y-%m-%d")
+        url = f"{endpoints["schedule"]}{start_date}"
+        if end_date is not None:
+            end_date = end_date.strftime("%Y-%m-%d")
+            url += f"&date_end={end_date}"
+
+        response = await self._request("GET", url)
+        response_json = response.json()
+        return [ScheduleLesson.model_validate(lesson) for lesson in response_json]
+
+    async def aclose(self) -> None:
+        await self._client.aclose()
