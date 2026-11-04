@@ -1,5 +1,6 @@
 endpoints = {"login": "/auth/login",
              "userinfo": "/settings/user-info",
-             "homework": "/homework/operations/list?page=1&type=0&group_id=80&status=",
+             "homework": "/homework/operations/list",
              "homework_upload": "/homework/operations/create",
-             "homework_delete": "/homework/operations/delete"}
+             "homework_delete": "/homework/operations/delete",
+             "schedule": "/schedule/operations/get-by-date-range?date_start="}
