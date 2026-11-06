@@ -50,12 +50,14 @@ class Journal:
     def get_userinfo(self) -> UserInfo:
         return self._user_info
 
-    async def fetch_homework(self, status: HomeworkStatus | None = None, homework_type: HomeworkType | None = None) -> List[Homework]:
+    async def fetch_homework(self, status: HomeworkStatus | None = None, homework_type: HomeworkType | None = None, subject_id: int | None = None) -> List[Homework]:
         params = {}
         if status is not None:
             params["status"] = status
         if homework_type is not None:
             params["type"] = homework_type
+        if subject_id is not None:
+            params["subject_id"] = subject_id
 
         base_url = endpoints["homework"]
         if params:
