@@ -2,7 +2,7 @@ import httpx
 from top_academy_journal.endpoints import endpoints
 from top_academy_journal.enums import HomeworkStatus, HomeworkType
 from top_academy_journal.models.homework import Homework, HomeworkStudent
-from top_academy_journal.models.schedule import ScheduleLesson
+from top_academy_journal.models.schedule import ScheduleLesson, LessonVisit
 from top_academy_journal.models.student import UserInfo
 from typing import List
 from pathlib import Path
@@ -110,6 +110,15 @@ class Journal:
         response = await self._request("GET", url)
         response_json = response.json()
         return [ScheduleLesson.model_validate(lesson) for lesson in response_json]
+
+    async def fetch_student_visits(self, subject_id: int | None = None):
+        url = endpoints["visits"]
+        if subject_id is not None:
+            url += f"?subject_id={subject_id}"
+
+        response = await self._request("GET", url)
+        response_json = response.json()
+        return [LessonVisit.model_validate(visit) for visit in response_json]
 
     async def aclose(self) -> None:
         await self._client.aclose()
