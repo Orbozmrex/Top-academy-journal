@@ -62,6 +62,9 @@ class Journal:
                 await self._auth()
                 
             response = await self._client.request(method, url, **kwargs)
+            if response.status_code == 401:
+                self._is_authorized = False
+                continue
             
             if response.status_code != 410 or attempt == max_retries - 1:
                 return response
