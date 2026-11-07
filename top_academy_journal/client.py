@@ -102,8 +102,8 @@ class Journal:
             self._homework[hw.id] = hw
         return homework_list
 
-    def get_homework(self, id: int) -> Homework:
-        return self._homework.get(id)
+    def get_homework(self, id: int | None = None) -> Homework | dict[int, Homework]:
+        return self._homework.get(id) if id is not None else self._homework
 
     async def upload_homework(self, homework: Homework, file_path: str, spent_hour: int = 0, spent_min: int = 30, comment: str = '') -> HomeworkStudent:
         if not (0 <= spent_hour <= 99):
