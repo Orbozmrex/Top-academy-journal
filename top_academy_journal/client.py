@@ -8,6 +8,7 @@ from typing import List
 from pathlib import Path
 from datetime import datetime
 from urllib.parse import urlencode
+import re
 
 class Journal:
     def __init__(self, username: str, password: str):
@@ -17,7 +18,7 @@ class Journal:
                                          transport=httpx.AsyncHTTPTransport(retries=3))
         self._username: str = username
         self._password: str = password
-        self._app_key: str = "6a56a5df2667e65aab73ce76d1dd737f7d1faef9c52e8b8c55ac75f565d8e8a6" #https://journal.top-academy.ru/app.70f28502cfe23f48f120.js
+        self._app_key: str | None = None
         self._is_authorized: bool = False
         self._user_info: UserInfo | None = None
         self._homework: dict[int, Homework] = {}
@@ -29,17 +30,44 @@ class Journal:
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         await self.aclose()
 
+    async def _refresh_app_key(self):
+        with httpx.Client(base_url="https://journal.top-academy.ru") as client:
+            try:
+                response = client.get("/auth/login/")
+                match = re.search(r'src="(/app\.[^"]+\.js)"', response.text)
+
+                app_url = match.group(1)
+
+                js_content = client.get(app_url)
+                match = re.search(r'AuthModel\("([^"]+)"\)', js_content.text)
+                
+                app_key = match.group(1)
+                self._app_key = app_key
+            except AttributeError:
+                print("Unable to find application key")
+
     async def _auth(self):
+        if self._app_key is None:
+            await self._refresh_app_key()
+
         response = await self._client.post(endpoints["login"], json={"username": self._username, "password": self._password, "application_key": self._app_key})
         access_token = response.json()
         self._client.headers.update({"Authorization": f"Bearer {access_token["access_token"]}"})
         self._is_authorized = True
 
     async def _request(self, method: str, url: str, **kwargs):
-        if not self._is_authorized:
-            await self._auth()
-
-        return await self._client.request(method, url, **kwargs)
+        max_retries = 2
+        for attempt in range(max_retries):
+            if not self._is_authorized:
+                await self._auth()
+                
+            response = await self._client.request(method, url, **kwargs)
+            
+            if response.status_code != 410 or attempt == max_retries - 1:
+                return response
+                
+            self._is_authorized = False 
+            await self._refresh_app_key()
 
     async def fetch_userinfo(self) -> UserInfo:
         response = await self._request("GET", endpoints["userinfo"])
