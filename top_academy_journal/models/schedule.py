@@ -22,3 +22,8 @@ class LessonVisit(BaseModel):
     def get_marks(cls, data: dict) -> dict:
         data["marks"] = {key: value for key, value in data.items() if key.endswith("_mark") and value is not None}
         return data
+
+class SubjectInfo(BaseModel):
+    id: int
+    name: str
+    short_name: str

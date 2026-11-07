@@ -2,7 +2,7 @@ import httpx
 from top_academy_journal.endpoints import endpoints
 from top_academy_journal.enums import HomeworkStatus, HomeworkType
 from top_academy_journal.models.homework import Homework, HomeworkStudent
-from top_academy_journal.models.schedule import ScheduleLesson, LessonVisit
+from top_academy_journal.models.schedule import ScheduleLesson, LessonVisit, SubjectInfo
 from top_academy_journal.models.student import UserInfo
 from typing import List
 from pathlib import Path
@@ -21,6 +21,7 @@ class Journal:
         self._is_authorized: bool = False
         self._user_info: UserInfo | None = None
         self._homework: dict[int, Homework] = {}
+        self._group_specs: dict[int, SubjectInfo] = {} 
 
     async def __aenter__(self):
         return self
@@ -119,6 +120,18 @@ class Journal:
         response = await self._request("GET", url)
         response_json = response.json()
         return [LessonVisit.model_validate(visit) for visit in response_json]
+
+    async def fetch_group_specs(self) -> List[SubjectInfo]:
+        response = await self._request("GET", endpoints["group_specs"])
+        response_json = response.json()
+
+        specs = [SubjectInfo.model_validate(spec) for spec in response_json]
+        for spec in specs:
+            self._group_specs[spec.id] = spec
+        return specs 
+
+    def get_group_specs(self, id: int | None = None) -> SubjectInfo | dict[int, SubjectInfo]:
+        return self._group_specs if id is None else self._group_specs.get(id)
 
     async def aclose(self) -> None:
         await self._client.aclose()
