@@ -9,7 +9,8 @@ from pathlib import Path
 from datetime import datetime
 from urllib.parse import urlencode
 import re
-
+from top_academy_journal.exceptions import InvalidCredentials
+from top_academy_journal._utils import validate_arguments
 class Journal:
     def __init__(self, username: str, password: str):
         self._client = httpx.AsyncClient(base_url="https://msapi.top-academy.ru/api/v2", 
@@ -52,6 +53,9 @@ class Journal:
 
         response = await self._client.post(endpoints["login"], json={"username": self._username, "password": self._password, "application_key": self._app_key})
         access_token = response.json()
+        if response.status_code == 422:
+            raise InvalidCredentials()
+        
         self._client.headers.update({"Authorization": f"Bearer {access_token["access_token"]}"})
         self._is_authorized = True
 
@@ -62,7 +66,7 @@ class Journal:
                 await self._auth()
                 
             response = await self._client.request(method, url, **kwargs)
-            if response.status_code == 401:
+            if response.status_code in [401, 410]:
                 self._is_authorized = False
                 continue
             
@@ -82,6 +86,7 @@ class Journal:
     def get_userinfo(self) -> UserInfo:
         return self._user_info
 
+    @validate_arguments
     async def fetch_homework(self, status: HomeworkStatus | None = None, homework_type: HomeworkType | None = None, subject_id: int | None = None) -> List[Homework]:
         params = {}
         if status is not None:
@@ -105,9 +110,11 @@ class Journal:
             self._homework[hw.id] = hw
         return homework_list
 
+    @validate_arguments
     def get_homework(self, id: int | None = None) -> Homework | dict[int, Homework]:
         return self._homework.get(id) if id is not None else self._homework
 
+    @validate_arguments
     async def upload_homework(self, homework: Homework, file_path: str, spent_hour: int = 0, spent_min: int = 30, comment: str = '') -> HomeworkStudent:
         if not (0 <= spent_hour <= 99):
             raise ValueError("spent_hour must be between 0 and 99")
@@ -132,6 +139,7 @@ class Journal:
             response = await self._request("POST", endpoints["homework_upload"], data=data, files=files)
             return HomeworkStudent.model_validate(response.json())
 
+    @validate_arguments
     async def fetch_schedule(self, start_date: datetime, end_date: datetime | None = None):
         start_date = start_date.strftime("%Y-%m-%d")
         url = f"{endpoints["schedule"]}{start_date}"
@@ -161,6 +169,7 @@ class Journal:
             self._group_specs[spec.id] = spec
         return specs 
 
+    @validate_arguments
     def get_group_specs(self, id: int | None = None) -> SubjectInfo | dict[int, SubjectInfo]:
         return self._group_specs if id is None else self._group_specs.get(id)
 
