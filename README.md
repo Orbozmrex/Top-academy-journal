@@ -8,7 +8,7 @@ A modern, easy to use, async API wrapper for top academy journal written in Pyth
 Installation
 ---
 ```bash
-python3 -m pip install -U aaaaaaa
+python3 -m pip install -U top-academy-journal
 ```
 
 Quick example
